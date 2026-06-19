@@ -1022,103 +1022,108 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return intent;
     }
-    // === إعدادات وكيل الذكاء الاصطناعي المطور والـ WebViews الثلاثية ===
-    private DrawerLayout drawerLayout;
-    private com.termux.view.TerminalView terminalView;
-    private WebView agentWebView, historyWebView, internetWebView;
-    private LinearLayout internetContainer;
-    private EditText edtBrowserUrl;
-    private TextView txtTitle;
-    private SharedPreferences agentPrefs;
+
     
-    private static final int VIEW_AGENT = 0;
-    private static final int VIEW_BROWSER = 1;
-    private static final int VIEW_TERMINAL = 2;
-    private int currentActiveView = VIEW_AGENT;
+            // === نظام تشغيل الوكيل الذكي والـ WebViews الثلاثية ===
+    private androidx.drawerlayout.widget.DrawerLayout agentDrawerLayout;
+    private android.webkit.WebView agentChatWebView;
+    private android.webkit.WebView agentHistoryWebView;
+    private android.webkit.WebView agentInternetWebView;
+    private android.widget.LinearLayout agentInternetContainer;
+    private android.widget.EditText agentUrlInput;
+    private android.widget.TextView agentTitleText;
+    private android.content.SharedPreferences agentBootPrefs;
 
     public void setupAgenticOSViews() {
-        // 1. ربط المكونات البرمجية بواجهة activity_termux.xml
-        drawerLayout = findViewById(R.id.drawer_layout);
-        terminalView = findViewById(R.id.terminal_view);
-        agentWebView = findViewById(R.id.agent_webview);
-        historyWebView = findViewById(R.id.history_webview);
-        internetWebView = findViewById(R.id.internet_webview);
-        internetContainer = findViewById(R.id.internet_container);
-        edtBrowserUrl = findViewById(R.id.edt_browser_url);
-        txtTitle = findViewById(R.id.txt_title);
-        
-        agentPrefs = getSharedPreferences("AgenticPrefs", Context.MODE_PRIVATE);
+        try {
+            agentDrawerLayout = findViewById(R.id.drawer_layout);
+            agentChatWebView = findViewById(R.id.agent_webview);
+            agentHistoryWebView = findViewById(R.id.history_webview);
+            agentInternetWebView = findViewById(R.id.internet_webview);
+            agentInternetContainer = findViewById(R.id.internet_container);
+            agentUrlInput = findViewById(R.id.edt_browser_url);
+            agentTitleText = findViewById(R.id.txt_title);
+            
+            agentBootPrefs = getSharedPreferences("AgenticPrefs", android.content.Context.MODE_PRIVATE);
 
-        // 2. تهيئة وتفعيل الجافا سكريبت بالكامل
-        configureWebView(agentWebView);
-        configureWebView(historyWebView);
-        configureWebView(internetWebView);
+            if (agentChatWebView != null) configureAgentWebView(agentChatWebView);
+            if (agentHistoryWebView != null) configureAgentWebView(agentHistoryWebView);
+            if (agentInternetWebView != null) configureAgentWebView(agentInternetWebView);
 
-        agentWebView.setWebViewClient(new WebViewClient());
-        historyWebView.setWebViewClient(new WebViewClient());
-        internetWebView.setWebViewClient(new WebViewClient());
+            if (agentChatWebView != null) agentChatWebView.loadUrl("http://localhost:5000");
+            if (agentHistoryWebView != null) agentHistoryWebView.loadUrl("http://localhost:5000/history");
 
-        // 3. تحميل الخادم المحلي للوكيل الذكي
-        agentWebView.loadUrl("http://localhost:5000");
-        historyWebView.loadUrl("http://localhost:5000/history");
-
-        // 4. تشغيل شريط البحث في الويب
-        edtBrowserUrl.setOnEditorActionListener((v, actionId, event) -> {
-            String url = edtBrowserUrl.getText().toString();
-            if(!url.startsWith("http")) url = "https://google.com" + url;
-            internetWebView.loadUrl(url);
-            return true;
-        });
-
-        // 5. زر فتح سجل المحادثات من اليسار
-        findViewById(R.id.btn_open_drawer).setOnClickListener(v -> drawerLayout.openDrawer(findViewById(R.id.navigation_view)));
-
-        // 6. زر القائمة المنبثقة والتبديل وحفظ الإقلاع الافتراضي
-        findViewById(R.id.btn_menu_popup).setOnClickListener(v -> {
-            PopupMenu popup = new PopupMenu(this, v);
-            popup.getMenuInflater().inflate(R.menu.popup_menu, popup.getMenu());
-            popup.setOnMenuItemClickListener(item -> {
-                int id = item.getItemId();
-                if (id == R.id.menu_agent) { switchAgentView(VIEW_AGENT); return true; }
-                if (id == R.id.menu_browser) { switchAgentView(VIEW_BROWSER); return true; }
-                if (id == R.id.menu_terminal) { switchAgentView(VIEW_TERMINAL); return true; }
-                if (id == R.id.menu_reload) {
-                    agentWebView.reload(); historyWebView.reload(); internetWebView.reload();
-                    Toast.makeText(this, "Systems refreshed!", Toast.LENGTH_SHORT).show();
+            if (agentUrlInput != null && agentInternetWebView != null) {
+                agentUrlInput.setOnEditorActionListener((v, actionId, event) -> {
+                    String url = agentUrlInput.getText().toString();
+                    if(!url.startsWith("http")) url = "https://google.com" + url;
+                    agentInternetWebView.loadUrl(url);
                     return true;
-                }
-                if (id == R.id.menu_set_default) {
-                    agentPrefs.edit().putInt("DefaultView", currentActiveView).apply();
-                    Toast.makeText(this, "Saved as default on boot!", Toast.LENGTH_SHORT).show();
-                    return true;
-                }
-                return false;
-            });
-            popup.show();
-        });
+                });
+            }
 
-        // 7. استدعاء الواجهة الافتراضية المحددة من قِبل المستخدم عند الإقلاع
-        int defaultView = agentPrefs.getInt("DefaultView", VIEW_AGENT);
-        switchAgentView(defaultView);
+            android.widget.ImageButton btnOpen = findViewById(R.id.btn_open_drawer);
+            if (btnOpen != null && agentDrawerLayout != null) {
+                btnOpen.setOnClickListener(v -> agentDrawerLayout.openDrawer(findViewById(R.id.navigation_view)));
+            }
+
+            android.widget.ImageButton btnPopup = findViewById(R.id.btn_menu_popup);
+            if (btnPopup != null) {
+                btnPopup.setOnClickListener(v -> showAgentPopupMenu(v));
+            }
+
+            int defaultView = agentBootPrefs.getInt("DefaultView", 0);
+            switchAgentInterface(defaultView);
+        } catch (Exception e) {
+            android.util.Log.e("AgenticOS", "Initialization error", e);
+        }
     }
 
-    private void configureWebView(WebView webView) {
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
+    private void configureAgentWebView(android.webkit.WebView webView) {
+        android.webkit.WebSettings s = webView.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setAllowFileAccess(true);
+        s.setAllowContentAccess(true);
     }
 
-    private void switchAgentView(int viewCode) {
+    private void showAgentPopupMenu(android.view.View v) {
+        androidx.appcompat.widget.PopupMenu popup = new androidx.appcompat.widget.PopupMenu(this, v);
+        popup.getMenuInflater().inflate(R.menu.popup_menu, popup.getMenu());
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.menu_agent) { switchAgentInterface(0); return true; }
+            if (id == R.id.menu_browser) { switchAgentInterface(1); return true; }
+            if (id == R.id.menu_terminal) { switchAgentInterface(2); return true; }
+            if (id == R.id.menu_reload) {
+                if(agentChatWebView != null) agentChatWebView.reload();
+                if(agentHistoryWebView != null) agentHistoryWebView.reload();
+                if(agentInternetWebView != null) agentInternetWebView.reload();
+                return true;
+            }
+            if (id == R.id.menu_set_default) {
+                agentBootPrefs.edit().putInt("DefaultView", currentActiveView).apply();
+                android.widget.Toast.makeTxt(this, "Boot view saved!", android.widget.Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            return false;
+        });
+        popup.show();
+    }
+
+    private void switchAgentInterface(int viewCode) {
         currentActiveView = viewCode;
-        agentWebView.setVisibility(viewCode == VIEW_AGENT ? View.VISIBLE : View.GONE);
-        internetContainer.setVisibility(viewCode == VIEW_BROWSER ? View.VISIBLE : View.GONE);
-        if(terminalView != null) terminalView.setVisibility(viewCode == VIEW_TERMINAL ? View.VISIBLE : View.GONE);
+        if(agentChatWebView != null) agentChatWebView.setVisibility(viewCode == 0 ? android.view.View.VISIBLE : android.view.View.GONE);
+        if(agentInternetContainer != null) agentInternetContainer.setVisibility(viewCode == 1 ? android.view.View.VISIBLE : android.view.View.GONE);
         
-        if(viewCode == VIEW_AGENT) txtTitle.setText("🤖 AGENT CHAT");
-        if(viewCode == VIEW_BROWSER) txtTitle.setText("🌐 AGENT BROWSER");
-        if(viewCode == VIEW_TERMINAL) txtTitle.setText("💻 TERMINAL PRO");
+        com.termux.view.TerminalView termView = findViewById(R.id.terminal_view);
+        if(termView != null) termView.setVisibility(viewCode == 2 ? android.view.View.VISIBLE : android.view.View.GONE);
+        
+        if(agentTitleText != null) {
+            if(viewCode == 0) agentTitleText.setText("🤖 AGENT CHAT");
+            if(viewCode == 1) agentTitleText.setText("🌐 AGENT BROWSER");
+            if(viewCode == 2) agentTitleText.setText("💻 TERMINAL PRO");
+        }
     }
 
 }
