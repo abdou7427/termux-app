@@ -225,7 +225,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_termux);
-        setupAgenticOSViews();
+        injectAgenticOSDynamicUI();
 
 
         // Load termux shared preferences
@@ -1024,86 +1024,145 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     
-            // === نظام تشغيل الوكيل الذكي والـ WebViews الثلاثية ===
-    private androidx.drawerlayout.widget.DrawerLayout agentDrawerLayout;
-    private android.webkit.WebView agentChatWebView;
-    private android.webkit.WebView agentHistoryWebView;
-    private android.webkit.WebView agentInternetWebView;
-    private android.widget.LinearLayout agentInternetContainer;
-    private android.widget.EditText agentUrlInput;
-    private android.widget.TextView agentTitleText;
-    private android.content.SharedPreferences agentBootPrefs;
+    // =================================================================
+    // 🧠 نظام تشغيل الوكيل الذكي والحقن الديناميكي للـ WebViews الثلاثية
+    // =================================================================
+    private android.webkit.WebView dynAgentWebView;
+    private android.webkit.WebView dynHistoryWebView;
+    private android.webkit.WebView dynInternetWebView;
+    private android.widget.LinearLayout dynInternetLayout;
+    private android.widget.EditText dynUrlBar;
+    private android.widget.TextView dynTitleBar;
+    private android.widget.FrameLayout dynMainContainer;
+    private android.content.SharedPreferences dynPrefs;
+    private int dynActiveView = 0; 
 
-    public void setupAgenticOSViews() {
+    public void injectAgenticOSDynamicUI() {
         try {
-            agentDrawerLayout = findViewById(R.id.drawer_layout);
-            agentChatWebView = findViewById(R.id.agent_webview);
-            agentHistoryWebView = findViewById(R.id.history_webview);
-            agentInternetWebView = findViewById(R.id.internet_webview);
-            agentInternetContainer = findViewById(R.id.internet_container);
-            agentUrlInput = findViewById(R.id.edt_browser_url);
-            agentTitleText = findViewById(R.id.txt_title);
-            
-            agentBootPrefs = getSharedPreferences("AgenticPrefs", android.content.Context.MODE_PRIVATE);
+            android.view.ViewGroup rootView = findViewById(R.id.activity_termux_root_view);
+            if (rootView == null) return;
 
-            if (agentChatWebView != null) configureAgentWebView(agentChatWebView);
-            if (agentHistoryWebView != null) configureAgentWebView(agentHistoryWebView);
-            if (agentInternetWebView != null) configureAgentWebView(agentInternetWebView);
+            dynPrefs = getSharedPreferences("AgenticPrefs", android.content.Context.MODE_PRIVATE);
 
-            if (agentChatWebView != null) agentChatWebView.loadUrl("http://localhost:5000");
-            if (agentHistoryWebView != null) agentHistoryWebView.loadUrl("http://localhost:5000/history");
+            android.widget.LinearLayout mainLayout = new android.widget.LinearLayout(this);
+            mainLayout.setLayoutParams(new android.widget.LinearLayout.LayoutParams(-1, -1));
+            mainLayout.setOrientation(android.widget.LinearLayout.VERTICAL);
+            mainLayout.setBackgroundColor(android.graphics.Color.parseColor("#121212"));
 
-            if (agentUrlInput != null && agentInternetWebView != null) {
-                agentUrlInput.setOnEditorActionListener((v, actionId, event) -> {
-                    String url = agentUrlInput.getText().toString();
-                    if(!url.startsWith("http")) url = "https://google.com" + url;
-                    agentInternetWebView.loadUrl(url);
-                    return true;
-                });
+            android.widget.RelativeLayout topBar = new android.widget.RelativeLayout(this);
+            topBar.setLayoutParams(new android.widget.LinearLayout.LayoutParams(-1, (int) (56 * getResources().getDisplayMetrics().density)));
+            topBar.setBackgroundColor(android.graphics.Color.parseColor("#1F1F1F"));
+            topBar.setPadding((int) (8 * getResources().getDisplayMetrics().density), (int) (8 * getResources().getDisplayMetrics().density), (int) (8 * getResources().getDisplayMetrics().density), (int) (8 * getResources().getDisplayMetrics().density));
+
+            dynTitleBar = new android.widget.TextView(this);
+            android.widget.RelativeLayout.LayoutParams titleParams = new android.widget.RelativeLayout.LayoutParams(-2, -2);
+            titleParams.addRule(android.widget.RelativeLayout.CENTER_IN_PARENT);
+            dynTitleBar.setLayoutParams(titleParams);
+            dynTitleBar.setText("🤖 AGENT CHAT");
+            dynTitleBar.setTextColor(android.graphics.Color.parseColor("#00FF66"));
+            dynTitleBar.setTextSize(18);
+            dynTitleBar.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            topBar.addView(dynTitleBar);
+
+            android.widget.ImageButton btnMenu = new android.widget.ImageButton(this);
+            android.widget.RelativeLayout.LayoutParams btnParams = new android.widget.RelativeLayout.LayoutParams((int) (40 * getResources().getDisplayMetrics().density), (int) (40 * getResources().getDisplayMetrics().density));
+            btnParams.addRule(android.widget.RelativeLayout.ALIGN_PARENT_END);
+            btnMenu.setLayoutParams(btnParams);
+            btnMenu.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            btnMenu.setImageResource(android.R.drawable.ic_menu_more);
+            btnMenu.setOnClickListener(v -> showDynamicPopupMenu(v));
+            topBar.addView(btnMenu);
+
+            mainLayout.addView(topBar);
+
+            dynMainContainer = new android.widget.FrameLayout(this);
+            dynMainContainer.setLayoutParams(new android.widget.LinearLayout.LayoutParams(-1, 0, 1.0f));
+
+            android.view.View originalTerminal = findViewById(R.id.terminal_view);
+            if (originalTerminal != null) {
+                android.view.ViewGroup parent = (android.view.ViewGroup) originalTerminal.getParent();
+                if (parent != null) parent.removeView(originalTerminal);
+                dynMainContainer.addView(originalTerminal);
             }
 
-            android.widget.ImageButton btnOpen = findViewById(R.id.btn_open_drawer);
-            if (btnOpen != null && agentDrawerLayout != null) {
-                btnOpen.setOnClickListener(v -> agentDrawerLayout.openDrawer(findViewById(R.id.navigation_view)));
-            }
+            dynAgentWebView = new android.webkit.WebView(this);
+            dynAgentWebView.setLayoutParams(new android.widget.FrameLayout.LayoutParams(-1, -1));
+            setupWebSettings(dynAgentWebView);
+            dynAgentWebView.setWebViewClient(new android.webkit.WebViewClient());
+            dynAgentWebView.loadUrl("http://localhost:5000");
+            dynMainContainer.addView(dynAgentWebView);
 
-            android.widget.ImageButton btnPopup = findViewById(R.id.btn_menu_popup);
-            if (btnPopup != null) {
-                btnPopup.setOnClickListener(v -> showAgentPopupMenu(v));
-            }
+            dynInternetLayout = new android.widget.LinearLayout(this);
+            dynInternetLayout.setLayoutParams(new android.widget.FrameLayout.LayoutParams(-1, -1));
+            dynInternetLayout.setOrientation(android.widget.LinearLayout.VERTICAL);
 
-            int defaultView = agentBootPrefs.getInt("DefaultView", 0);
-            switchAgentInterface(defaultView);
+            dynUrlBar = new android.widget.EditText(this);
+            dynUrlBar.setLayoutParams(new android.widget.LinearLayout.LayoutParams(-1, (int) (45 * getResources().getDisplayMetrics().density)));
+            dynUrlBar.setBackgroundColor(android.graphics.Color.parseColor("#2D2D2D"));
+            dynUrlBar.setHint("Enter URL or search...");
+            dynUrlBar.setTextColor(android.graphics.Color.WHITE);
+            dynUrlBar.setHintTextColor(android.graphics.Color.GRAY);
+            dynUrlBar.setSingleLine(true);
+            dynUrlBar.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+
+            dynInternetWebView = new android.webkit.WebView(this);
+            dynInternetWebView.setLayoutParams(new android.widget.LinearLayout.LayoutParams(-1, -1));
+            setupWebSettings(dynInternetWebView);
+            dynInternetWebView.setWebViewClient(new android.webkit.WebViewClient());
+
+            dynUrlBar.setOnEditorActionListener((v, actionId, event) -> {
+                String url = dynUrlBar.getText().toString();
+                if (!url.startsWith("http")) url = "https://google.com" + url;
+                dynInternetWebView.loadUrl(url);
+                return true;
+            });
+
+            dynInternetLayout.addView(dynUrlBar);
+            dynInternetLayout.addView(dynInternetWebView);
+            dynMainContainer.addView(dynInternetLayout);
+
+            mainLayout.addView(dynMainContainer);
+
+            rootView.removeAllViews();
+            rootView.addView(mainLayout);
+
+            int savedBootView = dynPrefs.getInt("DefaultView", 0);
+            switchDynamicInterface(savedBootView);
+
         } catch (Exception e) {
-            android.util.Log.e("AgenticOS", "Initialization error", e);
+            android.util.Log.e("AgenticOSInjection", "UI Injection Failed", e);
         }
     }
 
-    private void configureAgentWebView(android.webkit.WebView webView) {
-        android.webkit.WebSettings s = webView.getSettings();
+    private void setupWebSettings(android.webkit.WebView wv) {
+        android.webkit.WebSettings s = wv.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
     }
 
-    private void showAgentPopupMenu(android.view.View v) {
-        androidx.appcompat.widget.PopupMenu popup = new androidx.appcompat.widget.PopupMenu(this, v);
-        popup.getMenuInflater().inflate(R.menu.popup_menu, popup.getMenu());
+    private void showDynamicPopupMenu(android.view.View anchor) {
+        android.widget.PopupMenu popup = new android.widget.PopupMenu(this, anchor);
+        popup.getMenu().add(0, 1, 0, "🤖 Agent Chat");
+        popup.getMenu().add(0, 2, 0, "🌐 Agent Browser");
+        popup.getMenu().add(0, 3, 0, "💻 Termux Terminal");
+        popup.getMenu().add(0, 4, 0, "🔄 Force Refresh Web");
+        popup.getMenu().add(0, 5, 0, "⚙️ Set Current View as Default Boot");
+
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.menu_agent) { switchAgentInterface(0); return true; }
-            if (id == R.id.menu_browser) { switchAgentInterface(1); return true; }
-            if (id == R.id.menu_terminal) { switchAgentInterface(2); return true; }
-            if (id == R.id.menu_reload) {
-                if(agentChatWebView != null) agentChatWebView.reload();
-                if(agentHistoryWebView != null) agentHistoryWebView.reload();
-                if(agentInternetWebView != null) agentInternetWebView.reload();
+            if (id == 1) { switchDynamicInterface(0); return true; }
+            if (id == 2) { switchDynamicInterface(1); return true; }
+            if (id == 3) { switchDynamicInterface(2); return true; }
+            if (id == 4) {
+                if (dynAgentWebView != null) dynAgentWebView.reload();
+                if (dynInternetWebView != null) dynInternetWebView.reload();
                 return true;
             }
-            if (id == R.id.menu_set_default) {
-                agentBootPrefs.edit().putInt("DefaultView", currentActiveView).apply();
-                android.widget.Toast.makeTxt(this, "Boot view saved!", android.widget.Toast.LENGTH_SHORT).show();
+            if (id == 5) {
+                dynPrefs.edit().putInt("DefaultView", dynActiveView).apply();
+                android.widget.Toast.makeText(this, "Boot view saved successfully!", android.widget.Toast.LENGTH_SHORT).show();
                 return true;
             }
             return false;
@@ -1111,19 +1170,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         popup.show();
     }
 
-    private void switchAgentInterface(int viewCode) {
-        currentActiveView = viewCode;
-        if(agentChatWebView != null) agentChatWebView.setVisibility(viewCode == 0 ? android.view.View.VISIBLE : android.view.View.GONE);
-        if(agentInternetContainer != null) agentInternetContainer.setVisibility(viewCode == 1 ? android.view.View.VISIBLE : android.view.View.GONE);
+    private void switchDynamicInterface(int viewCode) {
+        dynActiveView = viewCode;
+        if (dynAgentWebView != null) dynAgentWebView.setVisibility(viewCode == 0 ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (dynInternetLayout != null) dynInternetLayout.setVisibility(viewCode == 1 ? android.view.View.VISIBLE : android.view.View.GONE);
         
-        com.termux.view.TerminalView termView = findViewById(R.id.terminal_view);
-        if(termView != null) termView.setVisibility(viewCode == 2 ? android.view.View.VISIBLE : android.view.View.GONE);
-        
-        if(agentTitleText != null) {
-            if(viewCode == 0) agentTitleText.setText("🤖 AGENT CHAT");
-            if(viewCode == 1) agentTitleText.setText("🌐 AGENT BROWSER");
-            if(viewCode == 2) agentTitleText.setText("💻 TERMINAL PRO");
+        android.view.View tv = findViewById(R.id.terminal_view);
+        if (tv != null) tv.setVisibility(viewCode == 2 ? android.view.View.VISIBLE : android.view.View.GONE);
+
+        if (dynTitleBar != null) {
+            if (viewCode == 0) dynTitleBar.setText("🤖 AGENT CHAT");
+            if (viewCode == 1) dynTitleBar.setText("🌐 AGENT BROWSER");
+            if (viewCode == 2) dynTitleBar.setText("💻 TERMINAL PRO");
         }
     }
+
+        
 
 }
