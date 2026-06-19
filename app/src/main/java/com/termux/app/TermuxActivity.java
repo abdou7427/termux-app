@@ -18,6 +18,17 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.appcompat.widget.PopupMenu;
+import androidx.drawerlayout.widget.DrawerLayout;
+import android.content.SharedPreferences;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
@@ -214,6 +225,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_termux);
+        setupAgenticOSViews();
+
 
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
@@ -1008,6 +1021,104 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Intent intent = new Intent(context, TermuxActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return intent;
+    }
+    // === إعدادات وكيل الذكاء الاصطناعي المطور والـ WebViews الثلاثية ===
+    private DrawerLayout drawerLayout;
+    private com.termux.view.TerminalView terminalView;
+    private WebView agentWebView, historyWebView, internetWebView;
+    private LinearLayout internetContainer;
+    private EditText edtBrowserUrl;
+    private TextView txtTitle;
+    private SharedPreferences agentPrefs;
+    
+    private static final int VIEW_AGENT = 0;
+    private static final int VIEW_BROWSER = 1;
+    private static final int VIEW_TERMINAL = 2;
+    private int currentActiveView = VIEW_AGENT;
+
+    public void setupAgenticOSViews() {
+        // 1. ربط المكونات البرمجية بواجهة activity_termux.xml
+        drawerLayout = findViewById(R.id.drawer_layout);
+        terminalView = findViewById(R.id.terminal_view);
+        agentWebView = findViewById(R.id.agent_webview);
+        historyWebView = findViewById(R.id.history_webview);
+        internetWebView = findViewById(R.id.internet_webview);
+        internetContainer = findViewById(R.id.internet_container);
+        edtBrowserUrl = findViewById(R.id.edt_browser_url);
+        txtTitle = findViewById(R.id.txt_title);
+        
+        agentPrefs = getSharedPreferences("AgenticPrefs", Context.MODE_PRIVATE);
+
+        // 2. تهيئة وتفعيل الجافا سكريبت بالكامل
+        configureWebView(agentWebView);
+        configureWebView(historyWebView);
+        configureWebView(internetWebView);
+
+        agentWebView.setWebViewClient(new WebViewClient());
+        historyWebView.setWebViewClient(new WebViewClient());
+        internetWebView.setWebViewClient(new WebViewClient());
+
+        // 3. تحميل الخادم المحلي للوكيل الذكي
+        agentWebView.loadUrl("http://localhost:5000");
+        historyWebView.loadUrl("http://localhost:5000/history");
+
+        // 4. تشغيل شريط البحث في الويب
+        edtBrowserUrl.setOnEditorActionListener((v, actionId, event) -> {
+            String url = edtBrowserUrl.getText().toString();
+            if(!url.startsWith("http")) url = "https://google.com" + url;
+            internetWebView.loadUrl(url);
+            return true;
+        });
+
+        // 5. زر فتح سجل المحادثات من اليسار
+        findViewById(R.id.btn_open_drawer).setOnClickListener(v -> drawerLayout.openDrawer(findViewById(R.id.navigation_view)));
+
+        // 6. زر القائمة المنبثقة والتبديل وحفظ الإقلاع الافتراضي
+        findViewById(R.id.btn_menu_popup).setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(this, v);
+            popup.getMenuInflater().inflate(R.menu.popup_menu, popup.getMenu());
+            popup.setOnMenuItemClickListener(item -> {
+                int id = item.getItemId();
+                if (id == R.id.menu_agent) { switchAgentView(VIEW_AGENT); return true; }
+                if (id == R.id.menu_browser) { switchAgentView(VIEW_BROWSER); return true; }
+                if (id == R.id.menu_terminal) { switchAgentView(VIEW_TERMINAL); return true; }
+                if (id == R.id.menu_reload) {
+                    agentWebView.reload(); historyWebView.reload(); internetWebView.reload();
+                    Toast.makeText(this, "Systems refreshed!", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                if (id == R.id.menu_set_default) {
+                    agentPrefs.edit().putInt("DefaultView", currentActiveView).apply();
+                    Toast.makeText(this, "Saved as default on boot!", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            });
+            popup.show();
+        });
+
+        // 7. استدعاء الواجهة الافتراضية المحددة من قِبل المستخدم عند الإقلاع
+        int defaultView = agentPrefs.getInt("DefaultView", VIEW_AGENT);
+        switchAgentView(defaultView);
+    }
+
+    private void configureWebView(WebView webView) {
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+    }
+
+    private void switchAgentView(int viewCode) {
+        currentActiveView = viewCode;
+        agentWebView.setVisibility(viewCode == VIEW_AGENT ? View.VISIBLE : View.GONE);
+        internetContainer.setVisibility(viewCode == VIEW_BROWSER ? View.VISIBLE : View.GONE);
+        if(terminalView != null) terminalView.setVisibility(viewCode == VIEW_TERMINAL ? View.VISIBLE : View.GONE);
+        
+        if(viewCode == VIEW_AGENT) txtTitle.setText("🤖 AGENT CHAT");
+        if(viewCode == VIEW_BROWSER) txtTitle.setText("🌐 AGENT BROWSER");
+        if(viewCode == VIEW_TERMINAL) txtTitle.setText("💻 TERMINAL PRO");
     }
 
 }
