@@ -1,117 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout 
+<com.termux.app.TermuxActivityRootView 
     xmlns:android="http://android.com"
-    xmlns:app="http://android.com"
-    android:id="@+id/drawer_layout"
+    android:id="@+id/activity_termux_root_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- الحاوية الرئيسية لـ Termux والواجهات -->
-    <LinearLayout
+    <com.termux.view.TerminalView
+        android:id="@+id/terminal_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:background="#121212">
+        android:layout_height="match_parent" />
 
-        <!-- شريط التحكم العلوي المطور الخاص بك -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:background="#1F1F1F"
-            android:padding="8dp">
-            <ImageButton
-                android:id="@+id/btn_open_drawer"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_alignParentStart="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_sort_by_size"
-                app:tint="#FFFFFF" />
-            <TextView
-                android:id="@+id/txt_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="AGENTIC OS"
-                android:textColor="#00FF66"
-                android:textStyle="bold"
-                android:textSize="18sp" />
-            <ImageButton
-                android:id="@+id/btn_menu_popup"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_alignParentEnd="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_more"
-                app:tint="#FFFFFF" />
-        </RelativeLayout>
+    <View
+        android:id="@+id/activity_termux_bottom_space_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_alignParentBottom="true" />
 
-        <!-- طبقات العرض المشتركة -->
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <!-- نظام الحاوية الأصلي لـ Termux (تم الحفاظ عليه بالكامل لمنع أخطاء البناء) -->
-            <com.termux.app.TermuxActivityRootView
-                android:id="@+id/activity_termux_root_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="gone">
-                <com.termux.view.TerminalView
-                    android:id="@+id/terminal_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-                <View
-                    android:id="@+id/activity_termux_bottom_space_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_alignParentBottom="true" />
-            </com.termux.app.TermuxActivityRootView>
-
-            <!-- واجهة الـ Agent الرئيسية الخاصة بك -->
-            <WebView
-                android:id="@+id/agent_webview"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="visible" />
-
-            <!-- متصفح الإنترنت المدمج الخاص بك -->
-            <LinearLayout
-                android:id="@+id/internet_container"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:visibility="gone">
-                <EditText
-                    android:id="@+id/edt_browser_url"
-                    android:layout_width="match_parent"
-                    android:layout_height="45dp"
-                    android:background="#2D2D2D"
-                    android:hint="Enter URL or search..."
-                    android:textColor="#FFFFFF"
-                    android:paddingLeft="12dp"
-                    android:inputType="textUri"
-                    android:imeOptions="actionGo"/>
-                <WebView
-                    android:id="@+id/internet_webview"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-            </LinearLayout>
-        </FrameLayout>
-    </LinearLayout>
-
-    <!-- القائمة الجانبية لسجل المحادثات -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/navigation_view"
-        android:layout_width="280dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:background="#1A1A1A">
-        <WebView
-            android:id="@+id/history_webview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </com.google.android.material.navigation.NavigationView>
-
-</androidx.drawerlayout.widget.DrawerLayout>
+</com.termux.app.TermuxActivityRootView>
