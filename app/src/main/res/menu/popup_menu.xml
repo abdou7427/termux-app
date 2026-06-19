@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://android.com">
+    <item android:id="@+id/menu_agent" android:title="🤖 Agent Chat" />
+    <item android:id="@+id/menu_browser" android:title="🌐 Agent Browser" />
+    <item android:id="@+id/menu_terminal" android:title="💻 Termux Terminal" />
+    <item android:id="@+id/menu_reload" android:title="🔄 Force Reload All" />
+    <item android:id="@+id/menu_set_default" android:title="⚙️ Set Current View as Default Boot" />
+</menu>
